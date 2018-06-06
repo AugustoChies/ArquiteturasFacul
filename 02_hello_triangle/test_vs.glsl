@@ -2,7 +2,8 @@
 
 layout(location = 0) in vec3 vertex_position;
 layout(location = 1) in vec3 vertex_colour;
-layout(location = 2) in vec2 tex_coord;
+layout(location = 2) in vec3 vertex_normal;
+layout(location = 3) in vec2 tex_coord;
 
 out vec3 colour;
 out vec2 texcoord;

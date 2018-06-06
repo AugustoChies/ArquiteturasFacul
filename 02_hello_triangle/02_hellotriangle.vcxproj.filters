@@ -43,5 +43,11 @@
     <None Include="test_vs.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="light_vs.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="light_fs.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
