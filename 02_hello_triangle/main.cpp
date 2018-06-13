@@ -249,7 +249,7 @@ int main() {
 		print_programme_info_log( shader_programme );
 		return false;
 	}
-/*
+
 	//LIGHTSHADER
 	char vertex_shaderl[1024 * 256];
 	char fragment_shaderl[1024 * 256];
@@ -258,7 +258,7 @@ int main() {
 
 	GLuint lvs = glCreateShader(GL_VERTEX_SHADER);
 	p = (const GLchar *)vertex_shaderl;
-	glShaderSource(vs, 1, &p, NULL);
+	glShaderSource(lvs, 1, &p, NULL);
 	glCompileShader(lvs);
 
 	// check for compile errors
@@ -288,7 +288,7 @@ int main() {
 	glAttachShader(light_shader_programme, lfs);
 	glAttachShader(light_shader_programme, lvs);
 	glLinkProgram(light_shader_programme);
-
+	
 
 
 	glGetProgramiv(light_shader_programme, GL_LINK_STATUS, &params);
@@ -298,7 +298,7 @@ int main() {
 		print_programme_info_log(light_shader_programme);
 		return false;
 	}
-	*/
+	
 
 	// tell GL to only draw onto a pixel if the shape is closer to the viewer
 	glEnable(GL_DEPTH_TEST); // enable depth-testing
@@ -366,7 +366,7 @@ int main() {
 		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
 		//Draw light
-	/*	glUseProgram(light_shader_programme);
+		/*glUseProgram(light_shader_programme);
 		unsigned int ltransformLoc = glGetUniformLocation(light_shader_programme, "model");
 		glUniformMatrix4fv(ltransformLoc, 1, GL_FALSE, glm::value_ptr(lmodel));
 		unsigned int lviewLoc = glGetUniformLocation(light_shader_programme, "view");
