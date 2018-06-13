@@ -45,13 +45,20 @@ float farPlane = 1000.f;
 glm::mat4 projectionMatrix(1.f);
 
 
+glm::vec3 lightPos(3.0f, 3.0f, 3.0f);
+
+glm::mat4 lmodel = glm::mat4();
+
+
+
 
 int main() {
 	restart_gl_log();
 	// all the start-up code for GLFW and GLEW is called here
 	start_gl();
 
-	
+	lmodel = glm::translate(lmodel, lightPos);
+	lmodel = glm::scale(lmodel, glm::vec3(0.2f));
 
 	/* OTHER STUFF GOES HERE NEXT */
 	//GLfloat points[] = { 0.0f, 1.0f, 0.0f, 0.5f, 0.0f, 0.0f, -0.5f, 0.0f, 0.0f,
@@ -124,9 +131,7 @@ int main() {
 
 	GLuint indices[] = {  
 		0,1,2,3,0,4,5,0,6,3,6,0,0,2,4,5,1,0,2,1,5,7,6,3,6,7,5,7,3,4,7,4,2,7,2,5
-	};
-
-	
+	};	
 
 	GLuint points_vbo;
 	glGenBuffers( 1, &points_vbo );
@@ -150,25 +155,19 @@ int main() {
 	}
 	stbi_image_free(data);
 
-	/* create a second VBO, containing the array of colours.
-	note that we could also put them both into a single vertex buffer. in this
-	case we would use the pointer and stride parameters of glVertexAttribPointer()
-	to describe the different data layouts */
-	//GLuint colours_vbo;
-    //glGenBuffers( 1, &colours_vbo );
-	//glBindBuffer( GL_ARRAY_BUFFER, colours_vbo );
-	//glBufferData( GL_ARRAY_BUFFER, sizeof( g_color_buffer_data ), g_color_buffer_data, GL_STATIC_DRAW );
-
-	/*GLuint vertices_vbo;
-	glGenBuffers(1, &vertices_vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, vertices_vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	*/
-
 	GLuint ebo;
 	glGenBuffers(1, &ebo);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+
+	//LIGHTS
+	GLuint light_vbo;
+	glGenBuffers(1, &light_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, light_vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(light_vertices), light_vertices, GL_STATIC_DRAW);
+
+
 	/* create the VAO.
 	we bind each VBO in turn, and call glVertexAttribPointer() to indicate where
 	the memory should be fetched for vertex shader input variables 0, and 1,
@@ -189,6 +188,18 @@ int main() {
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
 	glEnableVertexAttribArray(3);
+
+
+	//LIGHT VAO
+	GLuint lightVAO;
+	glGenVertexArrays(1, &lightVAO);
+	glBindVertexArray(lightVAO);
+	// we only need to bind to the VBO, the container's VBO's data already contains the correct data.
+	glBindBuffer(GL_ARRAY_BUFFER, light_vbo);
+	// set the vertex attributes (only position data for our lamp)
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GL_FLOAT), (void*)0);
+	glEnableVertexAttribArray(0);
+
 
 
 	char vertex_shader[1024 * 256];
@@ -238,6 +249,56 @@ int main() {
 		print_programme_info_log( shader_programme );
 		return false;
 	}
+/*
+	//LIGHTSHADER
+	char vertex_shaderl[1024 * 256];
+	char fragment_shaderl[1024 * 256];
+	parse_file_into_str("light_vs.glsl", vertex_shaderl, 1024 * 256);
+	parse_file_into_str("light_fs.glsl", fragment_shaderl, 1024 * 256);
+
+	GLuint lvs = glCreateShader(GL_VERTEX_SHADER);
+	p = (const GLchar *)vertex_shaderl;
+	glShaderSource(vs, 1, &p, NULL);
+	glCompileShader(lvs);
+
+	// check for compile errors
+	params = -1;
+	glGetShaderiv(lvs, GL_COMPILE_STATUS, &params);
+	if (GL_TRUE != params) {
+		fprintf(stderr, "ERROR: GL shader index %i did not compile\n", lvs);
+		print_shader_info_log(lvs);
+		return 1; // or exit or something
+	}
+
+	GLuint lfs = glCreateShader(GL_FRAGMENT_SHADER);
+	p = (const GLchar *)fragment_shaderl;
+	glShaderSource(lfs, 1, &p, NULL);
+	glCompileShader(lfs);
+
+	// check for compile errors
+	glGetShaderiv(lfs, GL_COMPILE_STATUS, &params);
+	if (GL_TRUE != params) {
+		fprintf(stderr, "ERROR: GL shader index %i did not compile\n", lfs);
+		print_shader_info_log(lfs);
+		return 1; // or exit or something
+	}
+
+	GLuint light_shader_programme = glCreateProgram();
+
+	glAttachShader(light_shader_programme, lfs);
+	glAttachShader(light_shader_programme, lvs);
+	glLinkProgram(light_shader_programme);
+
+
+
+	glGetProgramiv(light_shader_programme, GL_LINK_STATUS, &params);
+	if (GL_TRUE != params) {
+		fprintf(stderr, "ERROR: could not link shader programme GL index %i\n",
+			light_shader_programme);
+		print_programme_info_log(light_shader_programme);
+		return false;
+	}
+	*/
 
 	// tell GL to only draw onto a pixel if the shape is closer to the viewer
 	glEnable(GL_DEPTH_TEST); // enable depth-testing
@@ -300,11 +361,22 @@ int main() {
 		glUseProgram( shader_programme );
 		glBindTexture(GL_TEXTURE_2D, texture_id);
 		glBindVertexArray( vao );
-		// draw points 0-3 from the currently bound VAO with current in-use shader
-		//glDrawArrays(GL_TRIANGLES, 0, 12 * 3);
+		
+		//glDrawArrays(GL_TRIANGLES, 0, 36);
 		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
-		
+		//Draw light
+	/*	glUseProgram(light_shader_programme);
+		unsigned int ltransformLoc = glGetUniformLocation(light_shader_programme, "model");
+		glUniformMatrix4fv(ltransformLoc, 1, GL_FALSE, glm::value_ptr(lmodel));
+		unsigned int lviewLoc = glGetUniformLocation(light_shader_programme, "view");
+		glUniformMatrix4fv(lviewLoc, 1, GL_FALSE, glm::value_ptr(view));
+		unsigned int lprojLoc = glGetUniformLocation(light_shader_programme, "projection");
+		glUniformMatrix4fv(lprojLoc, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+		glBindVertexArray(lightVAO);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		*/
+	
 
 		// update other events like input handling
 		glfwPollEvents();
