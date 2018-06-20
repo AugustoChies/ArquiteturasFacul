@@ -45,7 +45,7 @@ float farPlane = 1000.f;
 glm::mat4 projectionMatrix(1.f);
 
 
-glm::vec3 lightPos(3.0f, 3.0f, 3.0f);
+glm::vec3 lightPos(1.0f, 1.0f, 3.0f);
 
 glm::mat4 lmodel = glm::mat4();
 
@@ -251,7 +251,7 @@ int main() {
 	}
 
 	//LIGHTSHADER
-	char vertex_shaderl[1024 * 256];
+	/*char vertex_shaderl[1024 * 256];
 	char fragment_shaderl[1024 * 256];
 	parse_file_into_str("light_vs.glsl", vertex_shaderl, 1024 * 256);
 	parse_file_into_str("light_fs.glsl", fragment_shaderl, 1024 * 256);
@@ -298,7 +298,7 @@ int main() {
 		print_programme_info_log(light_shader_programme);
 		return false;
 	}
-	
+	*/
 
 	// tell GL to only draw onto a pixel if the shape is closer to the viewer
 	glEnable(GL_DEPTH_TEST); // enable depth-testing
@@ -309,7 +309,8 @@ int main() {
 	glFrontFace( GL_CW );			// GL_CCW for counter clock-wise
 
 
-	
+	unsigned int lightpositionu = glGetUniformLocation(shader_programme, "lightPos");
+	glUniform3fv(lightpositionu , 1, glm::value_ptr(lightPos));
 	
 	
 	std::cout << cameraUp.x << ", " << cameraUp.y << ", " << cameraUp.z;
