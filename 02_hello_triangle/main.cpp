@@ -49,12 +49,61 @@ glm::vec3 lightPos(3.0f, 3.0f, 3.0f);
 
 glm::mat4 lmodel = glm::mat4();
 
-
 float lastX = 400;
 float lastY = 300;
 float pitch = 0;
-float yaw = 0;
+float yaw = -90;
 bool firstMouse = true;
+
+bool initShader(const char* vsfile, const char* fsfile,GLuint &program)
+{
+	char vertex_shader[1024 * 256];
+	char fragment_shader[1024 * 256];
+	parse_file_into_str(vsfile, vertex_shader, 1024 * 256);
+	parse_file_into_str(fsfile, fragment_shader, 1024 * 256);
+
+	GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+	const GLchar *p = (const GLchar *)vertex_shader;
+	glShaderSource(vs, 1, &p, NULL);
+	glCompileShader(vs);
+
+	// check for compile errors
+	int params = -1;
+	glGetShaderiv(vs, GL_COMPILE_STATUS, &params);
+	if (GL_TRUE != params) {
+		fprintf(stderr, "ERROR: GL shader index %i did not compile\n", vs);
+		print_shader_info_log(vs);
+		return 1; // or exit or something
+	}
+
+	GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+	p = (const GLchar *)fragment_shader;
+	glShaderSource(fs, 1, &p, NULL);
+	glCompileShader(fs);
+
+	// check for compile errors
+	glGetShaderiv(fs, GL_COMPILE_STATUS, &params);
+	if (GL_TRUE != params) {
+		fprintf(stderr, "ERROR: GL shader index %i did not compile\n", fs);
+		print_shader_info_log(fs);
+		return 1; // or exit or something
+	}
+
+	program = glCreateProgram();
+
+	glAttachShader(program, fs);
+	glAttachShader(program, vs);
+	glLinkProgram(program);
+
+
+	glGetProgramiv(program, GL_LINK_STATUS, &params);
+	if (GL_TRUE != params) {
+		fprintf(stderr, "ERROR: could not link shader programme GL index %i\n",
+			program);
+		print_programme_info_log(program);
+		return false;
+	}
+}
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
@@ -70,7 +119,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 	lastX = xpos;
 	lastY = ypos;
 
-	float sensitivity = 0.05;
+	float sensitivity = 0.3;
 	xoffset *= sensitivity;
 	yoffset *= sensitivity;
 
@@ -88,6 +137,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 	front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
 	camerafront = glm::normalize(front);
 }
+
 
 
 int main() {
@@ -214,14 +264,6 @@ int main() {
 	}
 	stbi_image_free(data);
 
-
-	//LIGHTS
-	GLuint light_vbo;
-	glGenBuffers(1, &light_vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, light_vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(light_vertices), light_vertices, GL_STATIC_DRAW);
-
-
 	/* create the VAO.
 	we bind each VBO in turn, and call glVertexAttribPointer() to indicate where
 	the memory should be fetched for vertex shader input variables 0, and 1,
@@ -239,6 +281,18 @@ int main() {
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
 
+	
+	
+	
+	GLuint shader_programme;	
+	initShader("test_vs.glsl", "test_fs.glsl", shader_programme );
+	
+	//LIGHTS
+	GLuint light_vbo;
+	glGenBuffers(1, &light_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, light_vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(light_vertices), light_vertices, GL_STATIC_DRAW);
+
 	//LIGHT VAO
 	GLuint lightVAO;
 	glGenVertexArrays(1, &lightVAO);
@@ -249,105 +303,11 @@ int main() {
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GL_FLOAT), (void*)0);
 	glEnableVertexAttribArray(0);
 
-
-
-	char vertex_shader[1024 * 256];
-	char fragment_shader[1024 * 256];
-	parse_file_into_str( "test_vs.glsl", vertex_shader, 1024 * 256 );
-	parse_file_into_str( "test_fs.glsl", fragment_shader, 1024 * 256 );
-
-	GLuint vs = glCreateShader( GL_VERTEX_SHADER );
-	const GLchar *p = (const GLchar *)vertex_shader;
-	glShaderSource( vs, 1, &p, NULL );
-	glCompileShader( vs );
-
-	// check for compile errors
-	int params = -1;
-	glGetShaderiv( vs, GL_COMPILE_STATUS, &params );
-	if ( GL_TRUE != params ) {
-		fprintf( stderr, "ERROR: GL shader index %i did not compile\n", vs );
-		print_shader_info_log( vs );
-		return 1; // or exit or something
-	}
-
-	GLuint fs = glCreateShader( GL_FRAGMENT_SHADER );
-	p = (const GLchar *)fragment_shader;
-	glShaderSource( fs, 1, &p, NULL );
-	glCompileShader( fs );
-
-	// check for compile errors
-	glGetShaderiv( fs, GL_COMPILE_STATUS, &params );
-	if ( GL_TRUE != params ) {
-		fprintf( stderr, "ERROR: GL shader index %i did not compile\n", fs );
-		print_shader_info_log( fs );
-		return 1; // or exit or something
-	}
-	
-	GLuint shader_programme = glCreateProgram();
-
-	glAttachShader( shader_programme, fs );
-	glAttachShader( shader_programme, vs );
-	glLinkProgram( shader_programme );
-
-
-
-	glGetProgramiv( shader_programme, GL_LINK_STATUS, &params );
-	if ( GL_TRUE != params ) {
-		fprintf( stderr, "ERROR: could not link shader programme GL index %i\n",
-						 shader_programme );
-		print_programme_info_log( shader_programme );
-		return false;
-	}
-
-	//LIGHTSHADER
-	/*char vertex_shaderl[1024 * 256];
-	char fragment_shaderl[1024 * 256];
-	parse_file_into_str("light_vs.glsl", vertex_shaderl, 1024 * 256);
-	parse_file_into_str("light_fs.glsl", fragment_shaderl, 1024 * 256);
-
-	GLuint lvs = glCreateShader(GL_VERTEX_SHADER);
-	p = (const GLchar *)vertex_shaderl;
-	glShaderSource(lvs, 1, &p, NULL);
-	glCompileShader(lvs);
-
-	// check for compile errors
-	params = -1;
-	glGetShaderiv(lvs, GL_COMPILE_STATUS, &params);
-	if (GL_TRUE != params) {
-		fprintf(stderr, "ERROR: GL shader index %i did not compile\n", lvs);
-		print_shader_info_log(lvs);
-		return 1; // or exit or something
-	}
-
-	GLuint lfs = glCreateShader(GL_FRAGMENT_SHADER);
-	p = (const GLchar *)fragment_shaderl;
-	glShaderSource(lfs, 1, &p, NULL);
-	glCompileShader(lfs);
-
-	// check for compile errors
-	glGetShaderiv(lfs, GL_COMPILE_STATUS, &params);
-	if (GL_TRUE != params) {
-		fprintf(stderr, "ERROR: GL shader index %i did not compile\n", lfs);
-		print_shader_info_log(lfs);
-		return 1; // or exit or something
-	}
-
-	GLuint light_shader_programme = glCreateProgram();
-
-	glAttachShader(light_shader_programme, lfs);
-	glAttachShader(light_shader_programme, lvs);
-	glLinkProgram(light_shader_programme);
 	
 
-
-	glGetProgramiv(light_shader_programme, GL_LINK_STATUS, &params);
-	if (GL_TRUE != params) {
-		fprintf(stderr, "ERROR: could not link shader programme GL index %i\n",
-			light_shader_programme);
-		print_programme_info_log(light_shader_programme);
-		return false;
-	}
-	*/
+	GLuint light_shader_programme;
+	initShader("light_vs.glsl", "light_fs.glsl", light_shader_programme);
+	
 
 	// tell GL to only draw onto a pixel if the shape is closer to the viewer
 	glEnable(GL_DEPTH_TEST); // enable depth-testing
@@ -357,9 +317,6 @@ int main() {
 	glCullFace( GL_FRONT );		// cull back face
 	glFrontFace( GL_CW );			// GL_CCW for counter clock-wise
 	glfwSetInputMode(g_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-	
-	
 	
 	std::cout << cameraUp.x << ", " << cameraUp.y << ", " << cameraUp.z;
 	float deltaTime = 0.0f;	// Time between current frame and last frame
@@ -368,7 +325,7 @@ int main() {
 	float changetimer = 0.0;
 	
 	//glfwSetKeyCallback(g_window, key_callback);
-	//glfwSetCursorPosCallback(g_window, mouse_callback);
+	glfwSetCursorPosCallback(g_window, mouse_callback);
 
 	while ( !glfwWindowShouldClose( g_window ) ) {
 		float currentFrame = glfwGetTime();
@@ -380,6 +337,7 @@ int main() {
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 		glViewport( 0, 0, g_gl_width, g_gl_height );
 
+		glUseProgram(shader_programme);
 		unsigned int campositionu = glGetUniformLocation(shader_programme, "viewPos");
 		glUniform3fv(campositionu, 1, glm::value_ptr(cameraPos));
 
@@ -387,8 +345,8 @@ int main() {
 		glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 
 		cameraDirection = glm::normalize(cameraPos - (cameraPos + camerafront));
-		//cameraRight = glm::normalize(glm::cross(up, cameraDirection));
-		//cameraUp = glm::cross(cameraDirection, cameraRight);
+		cameraRight = glm::normalize(glm::cross(up, cameraDirection));
+		cameraUp = glm::cross(cameraDirection, cameraRight);
 		view = glm::lookAt(cameraPos, cameraPos + camerafront, cameraUp);
 
 		unsigned int viewLoc = glGetUniformLocation(shader_programme, "view");
@@ -410,8 +368,7 @@ int main() {
 
 		unsigned int projLoc = glGetUniformLocation(shader_programme, "projection");
 		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-
-		glUseProgram( shader_programme );
+		
 
 		unsigned int lightpositionu = glGetUniformLocation(shader_programme, "lightPos");
 		glUniform3fv(lightpositionu, 1, glm::value_ptr(lightPos));
@@ -423,7 +380,7 @@ int main() {
 		//glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
 		//Draw light
-		/*glUseProgram(light_shader_programme);
+		glUseProgram(light_shader_programme);
 		unsigned int ltransformLoc = glGetUniformLocation(light_shader_programme, "model");
 		glUniformMatrix4fv(ltransformLoc, 1, GL_FALSE, glm::value_ptr(lmodel));
 		unsigned int lviewLoc = glGetUniformLocation(light_shader_programme, "view");
@@ -432,13 +389,13 @@ int main() {
 		glUniformMatrix4fv(lprojLoc, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
 		glBindVertexArray(lightVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
-		*/
+		
 	
 
 		// update other events like input handling
 		glfwPollEvents();
 
-		float cameraSpeed = 2.0f * deltaTime;
+		float cameraSpeed = 4.0f * deltaTime;
 
 		if ( GLFW_PRESS == glfwGetKey( g_window, GLFW_KEY_ESCAPE ) ) {
 			glfwSetWindowShouldClose( g_window, 1 );
