@@ -50,6 +50,44 @@ glm::vec3 lightPos(1.0f, 1.0f, 3.0f);
 glm::mat4 lmodel = glm::mat4();
 
 
+float lastX = 400;
+float lastY = 300;
+float pitch = 0;
+float yaw = 0;
+bool firstMouse = true;
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+	if (firstMouse)
+	{
+		lastX = xpos;
+		lastY = ypos;
+		firstMouse = false;
+	}
+
+	float xoffset = xpos - lastX;
+	float yoffset = lastY - ypos;
+	lastX = xpos;
+	lastY = ypos;
+
+	float sensitivity = 0.05;
+	xoffset *= sensitivity;
+	yoffset *= sensitivity;
+
+	yaw += xoffset;
+	pitch += yoffset;
+
+	if (pitch > 89.0f)
+		pitch = 89.0f;
+	if (pitch < -89.0f)
+		pitch = -89.0f;
+
+	glm::vec3 front;
+	front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+	front.y = sin(glm::radians(pitch));
+	front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+	camerafront = glm::normalize(front);
+}
 
 
 int main() {
@@ -307,7 +345,7 @@ int main() {
 	glEnable( GL_CULL_FACE ); // cull face
 	glCullFace( GL_FRONT );		// cull back face
 	glFrontFace( GL_CW );			// GL_CCW for counter clock-wise
-
+	glfwSetInputMode(g_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	unsigned int lightpositionu = glGetUniformLocation(shader_programme, "lightPos");
 	glUniform3fv(lightpositionu , 1, glm::value_ptr(lightPos));
@@ -320,6 +358,7 @@ int main() {
 	float changetimer = 0.0;
 	
 	//glfwSetKeyCallback(g_window, key_callback);
+	//glfwSetCursorPosCallback(g_window, mouse_callback);
 
 	while ( !glfwWindowShouldClose( g_window ) ) {
 		float currentFrame = glfwGetTime();
