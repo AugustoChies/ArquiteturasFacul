@@ -257,9 +257,9 @@ int main() {
 		-1, 1, -1.0f,				0,1.0f,
 		
 
-		1,-1, -1.0f,               1.0f,0,
+		1,-1, -1.0f,                1.0f,0,
 		1,1, -1.0f,					1.0f,1.0f,
-		-1,-1, -1.0f,				0,0
+		-1,-1, -1.0f,				 0,0
 	};
 
 	GLuint points_vbo;
@@ -424,7 +424,7 @@ int main() {
 		glCullFace(GL_FRONT);
 
 		bindFrameBuffer(fbo, g_gl_width, g_gl_height);
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClearColor(0.4f, 0.4f, 0.6f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // we're not using the stencil buffer now
 		glEnable(GL_DEPTH_TEST);
 		//unbindCurrentFrameBuffer();
@@ -502,19 +502,20 @@ int main() {
 		unbindCurrentFrameBuffer();
 		glUseProgram(screen_shader_programme);
 
-	     GLint texLoc;
-	     texLoc = glGetUniformLocation(screen_shader_programme, "scene");
-		 glUniform1i(texLoc, 0);
+		// Get the uniform variables location. You've probably already done that before...
+		unsigned int sceneim = glGetUniformLocation(screen_shader_programme, "scene");
+		unsigned int bloomim = glGetUniformLocation(screen_shader_programme, "bloomBlur");
 
-		//texLoc = glGetUniformLocation(screen_shader_programme, "bloomBlur");
-		//glUniform1i(texLoc, 1);
+		
+		glUniform1i(sceneim, 0);
+		glUniform1i(bloomim, 1);
 
-
-		glActiveTexture(GL_TEXTURE0);
+		glActiveTexture(GL_TEXTURE0); // Texture unit 0
 		glBindTexture(GL_TEXTURE_2D, colorBuffers[0]);
 
-		//glActiveTexture(GL_TEXTURE1);
-		//glBindTexture(GL_TEXTURE_2D, colorBuffers[1]);
+		glActiveTexture(GL_TEXTURE1); // Texture unit 1
+		glBindTexture(GL_TEXTURE_2D, colorBuffers[1]);
+
 
 		glBindVertexArray(screenVAO);
 
