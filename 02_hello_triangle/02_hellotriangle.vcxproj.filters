@@ -49,5 +49,14 @@
     <None Include="light_fs.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="screen_vs.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="screen_fs.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="gaussblur_fs.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

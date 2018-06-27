@@ -23,8 +23,8 @@ Based on OpenGL 4 Example Code.
 #define GL_LOG_FILE "gl.log"
 
 // keep track of window size for things like the viewport and the mouse cursor
-int g_gl_width = 640;
-int g_gl_height = 480;
+int g_gl_width = 600;
+int g_gl_height = 400;
 GLFWwindow *g_window = NULL;
 
 glm::mat4 trans(1.f);
@@ -49,8 +49,8 @@ glm::vec3 lightPos(3.0f, 3.0f, 3.0f);
 
 glm::mat4 lmodel = glm::mat4();
 
-float lastX = 400;
-float lastY = 300;
+float lastX = 0;
+float lastY = 0;
 float pitch = 0;
 float yaw = -90;
 bool firstMouse = true;
@@ -136,6 +136,17 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 	front.y = sin(glm::radians(pitch));
 	front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
 	camerafront = glm::normalize(front);
+}
+
+void bindFrameBuffer(int frameBuffer, int width, int height) {
+	glBindTexture(GL_TEXTURE_2D, 0);//To make sure the texture isn't bound
+	glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
+	glViewport(0, 0, width, height);
+}
+
+void unbindCurrentFrameBuffer() {//call to switch to default frame buffer
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, g_gl_width, g_gl_height);
 }
 
 
@@ -240,7 +251,16 @@ int main() {
 		
 	};
 
+	static const GLfloat screen_vertices[] = {
+		-1, -1, -1.0f,				0,0,
+		1, 1, -1.0f,				1.0f,1.0f,
+		-1, 1, -1.0f,				0,1.0f,
+		
 
+		1,-1, -1.0f,               1.0f,0,
+		1,1, -1.0f,					1.0f,1.0f,
+		-1,-1, -1.0f,				0,0
+	};
 
 	GLuint points_vbo;
 	glGenBuffers( 1, &points_vbo );
@@ -301,13 +321,78 @@ int main() {
 	glBindBuffer(GL_ARRAY_BUFFER, light_vbo);
 	// set the vertex attributes (only position data for our lamp)
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GL_FLOAT), (void*)0);
-	glEnableVertexAttribArray(0);
-
-	
+	glEnableVertexAttribArray(0);	
 
 	GLuint light_shader_programme;
 	initShader("light_vs.glsl", "light_fs.glsl", light_shader_programme);
 	
+	//CRIA FBO
+	GLuint fbo;
+	glGenFramebuffers(1, &fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER,fbo);
+
+	unsigned int colorBuffers[2];
+	glGenTextures(2, colorBuffers);
+	for (unsigned int i = 0; i < 2; i++)
+	{
+		glBindTexture(GL_TEXTURE_2D, colorBuffers[i]);
+		glTexImage2D(
+			GL_TEXTURE_2D, 0, GL_RGB16F, g_gl_width, g_gl_height, 0, GL_RGB, GL_FLOAT, NULL
+		);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		// attach texture to framebuffer
+		glFramebufferTexture2D(
+			GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorBuffers[i], 0
+		);
+	}
+	unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(2, attachments);
+
+
+
+	GLuint screen_vbo;
+	glGenBuffers(1, &screen_vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, screen_vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(screen_vertices), screen_vertices, GL_STATIC_DRAW);
+
+	GLuint screenVAO;
+	glGenVertexArrays(1, &screenVAO);
+	glBindVertexArray(screenVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, screen_vbo);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (void*)0);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (void*)(3 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+
+	GLuint screen_shader_programme;
+	initShader("screen_vs.glsl", "screen_fs.glsl", screen_shader_programme);
+	
+
+	unsigned int pingpongFBO[2];
+	unsigned int pingpongBuffer[2];
+	glGenFramebuffers(2, pingpongFBO);
+	glGenTextures(2, pingpongBuffer);
+	for (unsigned int i = 0; i < 2; i++)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[i]);
+		glBindTexture(GL_TEXTURE_2D, pingpongBuffer[i]);
+		glTexImage2D(
+			GL_TEXTURE_2D, 0, GL_RGB16F, g_gl_width, g_gl_height, 0, GL_RGB, GL_FLOAT, NULL
+		);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glFramebufferTexture2D(
+			GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pingpongBuffer[i], 0
+		);
+	}
+
+	GLuint shaderBlur;
+	initShader("screen_vs.glsl", "gaussblur_fs.glsl", shaderBlur);
 
 	// tell GL to only draw onto a pixel if the shape is closer to the viewer
 	glEnable(GL_DEPTH_TEST); // enable depth-testing
@@ -326,7 +411,6 @@ int main() {
 	
 	//glfwSetKeyCallback(g_window, key_callback);
 	glfwSetCursorPosCallback(g_window, mouse_callback);
-
 	while ( !glfwWindowShouldClose( g_window ) ) {
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
@@ -337,6 +421,13 @@ int main() {
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 		glViewport( 0, 0, g_gl_width, g_gl_height );
 
+		glCullFace(GL_FRONT);
+
+		bindFrameBuffer(fbo, g_gl_width, g_gl_height);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // we're not using the stencil buffer now
+		glEnable(GL_DEPTH_TEST);
+		//unbindCurrentFrameBuffer();
 		glUseProgram(shader_programme);
 		unsigned int campositionu = glGetUniformLocation(shader_programme, "viewPos");
 		glUniform3fv(campositionu, 1, glm::value_ptr(cameraPos));
@@ -351,7 +442,7 @@ int main() {
 
 		unsigned int viewLoc = glGetUniformLocation(shader_programme, "view");
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-		
+
 		if (!ortho)
 		{
 			projectionMatrix = glm::perspective(
@@ -363,19 +454,19 @@ int main() {
 		}
 		else
 		{
-			projectionMatrix = glm::ortho(-5.0f, 5.0f,-5.0f, 5.0f, 0.1f, 100.0f);
+			projectionMatrix = glm::ortho(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 100.0f);
 		}
 
 		unsigned int projLoc = glGetUniformLocation(shader_programme, "projection");
 		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-		
+
 
 		unsigned int lightpositionu = glGetUniformLocation(shader_programme, "lightPos");
 		glUniform3fv(lightpositionu, 1, glm::value_ptr(lightPos));
 
 		glBindTexture(GL_TEXTURE_2D, texture_id);
-		glBindVertexArray( vao );
-		
+		glBindVertexArray(vao);
+
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 		//glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
@@ -389,8 +480,45 @@ int main() {
 		glUniformMatrix4fv(lprojLoc, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
 		glBindVertexArray(lightVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
-		
-	
+
+		unbindCurrentFrameBuffer();
+
+		bool horizontal = true, first_iteration = true;
+		int amount = 100;
+		glUseProgram(shaderBlur);
+		for (unsigned int i = 0; i < amount; i++)
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]);
+			unsigned int horiz = glGetUniformLocation(shaderBlur, "horizontal");
+			glUniform1i(horiz,horizontal);
+			glBindTexture(
+				GL_TEXTURE_2D, first_iteration ? colorBuffers[1] : pingpongBuffer[!horizontal]
+			);
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+			horizontal = !horizontal;
+			if (first_iteration)
+				first_iteration = false;
+		}
+		unbindCurrentFrameBuffer();
+		glUseProgram(screen_shader_programme);
+
+	     GLint texLoc;
+	     texLoc = glGetUniformLocation(screen_shader_programme, "scene");
+		 glUniform1i(texLoc, 0);
+
+		//texLoc = glGetUniformLocation(screen_shader_programme, "bloomBlur");
+		//glUniform1i(texLoc, 1);
+
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, colorBuffers[0]);
+
+		//glActiveTexture(GL_TEXTURE1);
+		//glBindTexture(GL_TEXTURE_2D, colorBuffers[1]);
+
+		glBindVertexArray(screenVAO);
+
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		// update other events like input handling
 		glfwPollEvents();
@@ -437,7 +565,7 @@ int main() {
 		// put the stuff we've been drawing onto the display
 		glfwSwapBuffers( g_window );
 	}
-
+	glDeleteFramebuffers(1, &fbo);
 	// close GL context and any other GLFW resources
 	glfwTerminate();
 	return 0;
