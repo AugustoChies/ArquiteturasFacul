@@ -253,13 +253,13 @@ int main() {
 
 	static const GLfloat screen_vertices[] = {
 		-1, -1, -1.0f,				0,0,
-		1, 1, -1.0f,				1.0f,1.0f,
+		1, 1, -1.0f,		        1.0f,1.0f,
 		-1, 1, -1.0f,				0,1.0f,
 		
 
 		1,-1, -1.0f,                1.0f,0,
 		1,1, -1.0f,					1.0f,1.0f,
-		-1,-1, -1.0f,				 0,0
+		-1,-1, -1.0f,			    0,0
 	};
 
 	GLuint points_vbo;
@@ -271,8 +271,8 @@ int main() {
 	glGenTextures(1, &texture_id);
 
 	glBindTexture(GL_TEXTURE_2D, texture_id);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	int width, height, nrChannels;
@@ -339,8 +339,9 @@ int main() {
 		glTexImage2D(
 			GL_TEXTURE_2D, 0, GL_RGB16F, g_gl_width, g_gl_height, 0, GL_RGB, GL_FLOAT, NULL
 		);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glGenerateMipmap(GL_TEXTURE_2D);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		// attach texture to framebuffer
@@ -382,8 +383,8 @@ int main() {
 		glTexImage2D(
 			GL_TEXTURE_2D, 0, GL_RGB16F, g_gl_width, g_gl_height, 0, GL_RGB, GL_FLOAT, NULL
 		);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glFramebufferTexture2D(
@@ -403,7 +404,6 @@ int main() {
 	glFrontFace( GL_CW );			// GL_CCW for counter clock-wise
 	glfwSetInputMode(g_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	
-	std::cout << cameraUp.x << ", " << cameraUp.y << ", " << cameraUp.z;
 	float deltaTime = 0.0f;	// Time between current frame and last frame
 	float lastFrame = 0.0f; // Time of last frame
 	bool ortho = false;
@@ -418,17 +418,17 @@ int main() {
 		changetimer -= 1 * deltaTime;
 		_update_fps_counter( g_window );
 		// wipe the drawing surface clear
+		glClearColor(0.4f, 0.4f, 0.6f, 1.0f);
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 		glViewport( 0, 0, g_gl_width, g_gl_height );
 
-		glCullFace(GL_FRONT);
-
 		bindFrameBuffer(fbo, g_gl_width, g_gl_height);
-		glClearColor(0.4f, 0.4f, 0.6f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // we're not using the stencil buffer now
+		
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
 		glEnable(GL_DEPTH_TEST);
-		//unbindCurrentFrameBuffer();
+		
 		glUseProgram(shader_programme);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		unsigned int campositionu = glGetUniformLocation(shader_programme, "viewPos");
 		glUniform3fv(campositionu, 1, glm::value_ptr(cameraPos));
 
@@ -483,44 +483,41 @@ int main() {
 
 		unbindCurrentFrameBuffer();
 
+		//BLUR
 		bool horizontal = true, first_iteration = true;
 		int amount = 100;
 		glUseProgram(shaderBlur);
 		for (unsigned int i = 0; i < amount; i++)
 		{
 			glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			unsigned int horiz = glGetUniformLocation(shaderBlur, "horizontal");
-			glUniform1i(horiz,horizontal);
+			glUniform1i(horiz,(int)horizontal);
 			glBindTexture(
 				GL_TEXTURE_2D, first_iteration ? colorBuffers[1] : pingpongBuffer[!horizontal]
 			);
+			glBindVertexArray(screenVAO);
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 			horizontal = !horizontal;
 			if (first_iteration)
 				first_iteration = false;
+			unbindCurrentFrameBuffer();
 		}
 		unbindCurrentFrameBuffer();
+
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glUseProgram(screen_shader_programme);
+		glUniform1i(glGetUniformLocation(screen_shader_programme, "scene"), 0);
+		glUniform1i(glGetUniformLocation(screen_shader_programme, "bloomBlur"), 1);
 
-		// Get the uniform variables location. You've probably already done that before...
-		unsigned int sceneim = glGetUniformLocation(screen_shader_programme, "scene");
-		unsigned int bloomim = glGetUniformLocation(screen_shader_programme, "bloomBlur");
-
-		
-		glUniform1i(sceneim, 0);
-		glUniform1i(bloomim, 1);
-
-		glActiveTexture(GL_TEXTURE0); // Texture unit 0
-		glBindTexture(GL_TEXTURE_2D, colorBuffers[0]);
-
-		glActiveTexture(GL_TEXTURE1); // Texture unit 1
-		glBindTexture(GL_TEXTURE_2D, colorBuffers[1]);
-
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, pingpongBuffer[1]);
+		//glActiveTexture(GL_TEXTURE1);
+		//glBindTexture(GL_TEXTURE_2D, pingpongBuffer[1]);
 
 		glBindVertexArray(screenVAO);
-
 		glDrawArrays(GL_TRIANGLES, 0, 6);
-
+		
 		// update other events like input handling
 		glfwPollEvents();
 
@@ -564,9 +561,12 @@ int main() {
 		
 
 		// put the stuff we've been drawing onto the display
+		
 		glfwSwapBuffers( g_window );
 	}
 	glDeleteFramebuffers(1, &fbo);
+	glDeleteFramebuffers(2, colorBuffers);
+	glDeleteFramebuffers(2, pingpongBuffer);
 	// close GL context and any other GLFW resources
 	glfwTerminate();
 	return 0;
